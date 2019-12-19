@@ -1,6 +1,8 @@
 ## TACS
+### Difference between YACS
+- Config format is TOML
+- **__str__** method is not supported yet.
 
-**__str__** method is not supported yet.
 ### Introduction
 
 TACS was created as a lightweight library to define and manage
