@@ -1,3 +1,4 @@
+# Copyright (c) 2019-present, Swall0w
 # Copyright (c) 2018-present, Facebook, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +14,7 @@
 # limitations under the License.
 ##############################################################################
 
-"""YACS -- Yet Another Configuration System is designed to be a simple
+"""TACS -- TOML yet Another Configuration System is designed to be a simple
 configuration management system for academic and industrial research
 projects.
 
@@ -27,14 +28,15 @@ import os
 import sys
 from ast import literal_eval
 
-import yaml
+#import yaml
+import toml
 
 # Flag for py2 and py3 compatibility to use when separate code paths are necessary
 # When _PY2 is False, we assume Python 3 is in use
 _PY2 = sys.version_info.major == 2
 
 # Filename extensions for loading configs from files
-_YAML_EXTS = {"", ".yaml", ".yml"}
+_TOML_EXTS = {"", ".toml", ".tml"}
 _PY_EXTS = {".py"}
 
 # py2 and py3 compatibility for checking file object type
@@ -89,7 +91,7 @@ class CfgNode(dict):
         self.__dict__[CfgNode.IMMUTABLE] = False
         # Deprecated options
         # If an option is removed from the code and you don't want to break existing
-        # yaml configs, you can add the full config key as a string to the set below.
+        # toml configs, you can add the full config key as a string to the set below.
         self.__dict__[CfgNode.DEPRECATED_KEYS] = set()
         # Renamed options
         # If you rename a config option, record the mapping from the old name to the new
@@ -161,26 +163,26 @@ class CfgNode(dict):
 
         self[name] = value
 
-    def __str__(self):
-        def _indent(s_, num_spaces):
-            s = s_.split("\n")
-            if len(s) == 1:
-                return s_
-            first = s.pop(0)
-            s = [(num_spaces * " ") + line for line in s]
-            s = "\n".join(s)
-            s = first + "\n" + s
-            return s
-
-        r = ""
-        s = []
-        for k, v in sorted(self.items()):
-            seperator = "\n" if isinstance(v, CfgNode) else " "
-            attr_str = "{}:{}{}".format(str(k), seperator, str(v))
-            attr_str = _indent(attr_str, 2)
-            s.append(attr_str)
-        r += "\n".join(s)
-        return r
+#    def __str__(self):
+#        def _indent(s_, num_spaces):
+#            s = s_.split("\n")
+#            if len(s) == 1:
+#                return s_
+#            first = s.pop(0)
+#            s = [(num_spaces * " ") + line for line in s]
+#            s = "\n".join(s)
+#            s = first + "\n" + s
+#            return s
+#
+#        r = ""
+#        s = []
+#        for k, v in sorted(self.items()):
+#            seperator = "\n" if isinstance(v, CfgNode) else " "
+#            attr_str = "{}:{}{}".format(str(k), seperator, str(v))
+#            attr_str = _indent(attr_str, 2)
+#            s.append(attr_str)
+#        r += "\n".join(s)
+#        return r
 
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, super(CfgNode, self).__repr__())
@@ -204,10 +206,10 @@ class CfgNode(dict):
                 return cfg_dict
 
         self_as_dict = convert_to_dict(self, [])
-        return yaml.safe_dump(self_as_dict, **kwargs)
+        return toml.dumps(self_as_dict, **kwargs)
 
     def merge_from_file(self, cfg_filename):
-        """Load a yaml config file and merge it this CfgNode."""
+        """Load a toml config file and merge it this CfgNode."""
         with open(cfg_filename, "r") as f:
             cfg = self.load_cfg(f)
         self.merge_from_other_cfg(cfg)
@@ -332,10 +334,10 @@ class CfgNode(dict):
         Args:
             cfg_file_obj_or_str (str or file):
                 Supports loading from:
-                - A file object backed by a YAML file
+                - A file object backed by a TOML file
                 - A file object backed by a Python source file that exports an attribute
                   "cfg" that is either a dict or a CfgNode
-                - A string that can be parsed as valid YAML
+                - A string that can be parsed as valid TOML
         """
         _assert_with_logging(
             isinstance(cfg_file_obj_or_str, _FILE_TYPES + (str,)),
@@ -352,22 +354,22 @@ class CfgNode(dict):
 
     @classmethod
     def _load_cfg_from_file(cls, file_obj):
-        """Load a config from a YAML file or a Python source file."""
+        """Load a config from a TOML file or a Python source file."""
         _, file_extension = os.path.splitext(file_obj.name)
-        if file_extension in _YAML_EXTS:
+        if file_extension in _TOML_EXTS:
             return cls._load_cfg_from_yaml_str(file_obj.read())
         elif file_extension in _PY_EXTS:
             return cls._load_cfg_py_source(file_obj.name)
         else:
             raise Exception(
                 "Attempt to load from an unsupported file type {}; "
-                "only {} are supported".format(file_obj, _YAML_EXTS.union(_PY_EXTS))
+                "only {} are supported".format(file_obj, _TOML_EXTS.union(_PY_EXTS))
             )
 
     @classmethod
     def _load_cfg_from_yaml_str(cls, str_obj):
-        """Load a config from a YAML string encoding."""
-        cfg_as_dict = yaml.safe_load(str_obj)
+        """Load a config from a TOML string encoding."""
+        cfg_as_dict = toml.loads(str_obj)
         return cls(cfg_as_dict)
 
     @classmethod
@@ -390,14 +392,14 @@ class CfgNode(dict):
     @classmethod
     def _decode_cfg_value(cls, value):
         """
-        Decodes a raw config value (e.g., from a yaml config files or command
+        Decodes a raw config value (e.g., from a toml config files or command
         line argument) into a Python object.
 
         If the value is a dict, it will be interpreted as a new CfgNode.
         If the value is a str, it will be evaluated as literals.
         Otherwise it is returned as-is.
         """
-        # Configs parsed from raw yaml will contain dictionary keys that need to be
+        # Configs parsed from raw toml will contain dictionary keys that need to be
         # converted to CfgNode objects
         if isinstance(value, dict):
             return cls(value)
@@ -415,7 +417,7 @@ class CfgNode(dict):
         # The type of v is always a string (before calling literal_eval), but
         # sometimes it *represents* a string and other times a data structure, like
         # a list. In the case that v represents a string, what we got back from the
-        # yaml parser is 'foo' *without quotes* (so, not '"foo"'). literal_eval is
+        # toml parser is 'foo' *without quotes* (so, not '"foo"'). literal_eval is
         # ok with '"foo"', but will raise a ValueError if given 'foo'. In other
         # cases, like paths (v = 'foo/bar' and not v = '"foo/bar"'), literal_eval
         # will raise a SyntaxError.
